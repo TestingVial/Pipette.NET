@@ -193,7 +193,8 @@ public static class VialGenerator
         var assetsPath = Path.Combine(projectDirectory, "obj", "project.assets.json");
         if (!File.Exists(assetsPath))
         {
-            throw new FileNotFoundException($"NuGet assets file not found: {assetsPath}");
+            return TryFindTestingVialAssemblyFromGlobalPackages("TestingVial.NET")
+                ?? throw new FileNotFoundException($"NuGet assets file not found. Run dotnet restore to generate it: {assetsPath}");
         }
 
         using var stream = File.OpenRead(assetsPath);
@@ -207,11 +208,21 @@ public static class VialGenerator
 
         if (packageNameWithVersion is null)
         {
-            throw new InvalidOperationException("Could not resolve TestingVial.NET package metadata.");
+            return TryFindTestingVialAssemblyFromGlobalPackages("TestingVial.NET")
+                ?? throw new InvalidOperationException("Could not resolve TestingVial.NET package. Ensure the package is referenced and dotnet restore has been run.");
         }
 
-        var packageVersion = packageNameWithVersion.Split('/', 2)[1];
-        var packageRoot = root.GetProperty("packageFolders").EnumerateObject().First().Name;
+        var packageNameParts = packageNameWithVersion.Split('/', 2);
+        var packageId = packageNameParts[0];
+        var packageVersion = packageNameParts[1];
+        var packageFolders = root.GetProperty("packageFolders").EnumerateObject();
+        if (!packageFolders.Any())
+        {
+            return TryFindTestingVialAssemblyFromGlobalPackages(packageId)
+                ?? throw new InvalidOperationException("No NuGet package folders were found in project assets. Run dotnet restore and try again.");
+        }
+
+        var packageRoot = packageFolders.First().Name;
 
         foreach (var target in root.GetProperty("targets").EnumerateObject())
         {
@@ -236,7 +247,18 @@ public static class VialGenerator
 
             var assemblyPath = Path.Combine(
                 packageRoot,
-                "testingvial.net",
+                packageId,
+                packageVersion,
+                relativeAssemblyPath.Replace('/', Path.DirectorySeparatorChar));
+
+            if (File.Exists(assemblyPath))
+            {
+                return assemblyPath;
+            }
+
+            assemblyPath = Path.Combine(
+                packageRoot,
+                packageId.ToLowerInvariant(),
                 packageVersion,
                 relativeAssemblyPath.Replace('/', Path.DirectorySeparatorChar));
 
@@ -246,6 +268,72 @@ public static class VialGenerator
             }
         }
 
-        throw new FileNotFoundException("Could not locate TestingVial.NET assembly from NuGet assets.");
+        return TryFindTestingVialAssemblyFromGlobalPackages(packageId)
+            ?? throw new FileNotFoundException("Could not locate TestingVial.NET assembly. Verify the target framework is compatible and run dotnet restore.");
+    }
+
+    private static string? TryFindTestingVialAssemblyFromGlobalPackages(string packageId)
+    {
+        var packageRoots = new List<string>();
+        var nugetPackages = Environment.GetEnvironmentVariable("NUGET_PACKAGES");
+
+        if (!string.IsNullOrWhiteSpace(nugetPackages))
+        {
+            packageRoots.Add(nugetPackages);
+        }
+
+        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (!string.IsNullOrWhiteSpace(userProfile))
+        {
+            packageRoots.Add(Path.Combine(userProfile, ".nuget", "packages"));
+        }
+
+        foreach (var packageRoot in packageRoots.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var packageDirectories = new[]
+            {
+                Path.Combine(packageRoot, packageId),
+                Path.Combine(packageRoot, packageId.ToLowerInvariant())
+            };
+
+            var existingPackageDirectory = packageDirectories.FirstOrDefault(Directory.Exists);
+            if (existingPackageDirectory is null)
+            {
+                continue;
+            }
+
+            var assemblyPath = Directory.EnumerateDirectories(existingPackageDirectory)
+                .Select(versionDirectory => new
+                {
+                    Directory = versionDirectory,
+                    ParsedVersion = ParseVersionForOrdering(Path.GetFileName(versionDirectory)),
+                    IsPrerelease = IsPrereleaseVersion(Path.GetFileName(versionDirectory))
+                })
+                .OrderByDescending(item => item.ParsedVersion)
+                .ThenByDescending(item => !item.IsPrerelease)
+                .ThenByDescending(item => item.Directory, StringComparer.OrdinalIgnoreCase)
+                .SelectMany(item => Directory.EnumerateFiles(item.Directory, "TestingVial.NET.dll", SearchOption.AllDirectories))
+                .FirstOrDefault();
+
+            if (assemblyPath is not null)
+            {
+                return assemblyPath;
+            }
+        }
+
+        return null;
+    }
+
+    private static Version ParseVersionForOrdering(string version)
+    {
+        var stablePortion = version.Split('-', 2)[0];
+        return Version.TryParse(stablePortion, out var parsedVersion)
+            ? parsedVersion
+            : new Version(0, 0);
+    }
+
+    private static bool IsPrereleaseVersion(string version)
+    {
+        return version.Contains('-', StringComparison.Ordinal);
     }
 }
