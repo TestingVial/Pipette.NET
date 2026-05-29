@@ -1,0 +1,339 @@
+﻿using System.Text.Json;
+using System.Xml.Linq;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+
+namespace Pipette;
+
+public static class VialGenerator
+{
+    public static string GenerateForProject(string projectPath, string vialVersion)
+    {
+        if (!File.Exists(projectPath))
+        {
+            throw new FileNotFoundException($"Project not found: {projectPath}");
+        }
+
+        var fullProjectPath = Path.GetFullPath(projectPath);
+        var projectDirectory = Path.GetDirectoryName(fullProjectPath)!;
+        var hasTestingVialReference = ProjectReferencesTestingVial(fullProjectPath);
+        var occurrences = new Dictionary<string, int>(StringComparer.Ordinal);
+
+        if (hasTestingVialReference)
+        {
+            occurrences = FindTestingVialAttributeUsages(fullProjectPath, projectDirectory);
+        }
+
+        var outputPath = Path.ChangeExtension(fullProjectPath, ".vial");
+        var lines = new List<string>
+        {
+            $"vial-version: {vialVersion}",
+            $"project: {Path.GetFileName(fullProjectPath)}",
+            "occurrences:"
+        };
+
+        foreach (var occurrence in occurrences.OrderBy(kvp => kvp.Key, StringComparer.Ordinal))
+        {
+            lines.Add($"- {occurrence.Key}: {occurrence.Value}");
+        }
+
+        File.WriteAllLines(outputPath, lines);
+        return outputPath;
+    }
+
+    private static bool ProjectReferencesTestingVial(string projectPath)
+    {
+        var project = XDocument.Load(projectPath);
+        return project
+            .Descendants()
+            .Where(e => e.Name.LocalName == "PackageReference")
+            .Any(e => string.Equals((string?)e.Attribute("Include"), "TestingVial.NET", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static IEnumerable<string> EnumerateSourceFiles(string projectDirectory)
+    {
+        return Directory.EnumerateFiles(projectDirectory, "*.cs", SearchOption.AllDirectories)
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static Dictionary<string, int> FindTestingVialAttributeUsages(string projectPath, string projectDirectory)
+    {
+        var trees = EnumerateSourceFiles(projectDirectory)
+            .Select(file => CSharpSyntaxTree.ParseText(File.ReadAllText(file), path: file))
+            .ToList();
+
+        var metadataReferences = GetMetadataReferences(projectPath);
+        var compilation = CSharpCompilation.Create(
+            "PipetteVialScan",
+            trees,
+            metadataReferences,
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+
+        var ivialSymbol = compilation.GetTypeByMetadataName("TestingVial.NET.IVial");
+        if (ivialSymbol is null)
+        {
+            return new Dictionary<string, int>(StringComparer.Ordinal);
+        }
+
+        var occurrences = new Dictionary<string, int>(StringComparer.Ordinal);
+
+        foreach (var tree in trees)
+        {
+            var semanticModel = compilation.GetSemanticModel(tree);
+            var root = tree.GetRoot();
+
+            foreach (var attribute in root.DescendantNodes().OfType<AttributeSyntax>())
+            {
+                if (semanticModel.GetTypeInfo(attribute).Type is not INamedTypeSymbol attributeType)
+                {
+                    continue;
+                }
+
+                if (!string.Equals(attributeType.ContainingAssembly?.Name, "TestingVial.NET", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                if (!IsVialAttributeUsage(attributeType, ivialSymbol))
+                {
+                    continue;
+                }
+
+                occurrences[attributeType.Name] = occurrences.TryGetValue(attributeType.Name, out var existing) ? existing + 1 : 1;
+            }
+        }
+
+        return occurrences;
+    }
+
+    private static bool IsVialAttributeUsage(INamedTypeSymbol attributeType, INamedTypeSymbol ivialSymbol)
+    {
+        if (!InheritsFromAttribute(attributeType))
+        {
+            return false;
+        }
+
+        if (ImplementsIVial(attributeType, ivialSymbol))
+        {
+            return true;
+        }
+
+        foreach (var typeArgument in attributeType.TypeArguments.OfType<INamedTypeSymbol>())
+        {
+            if (ImplementsIVial(typeArgument, ivialSymbol))
+            {
+                return true;
+            }
+        }
+
+        if (!attributeType.IsGenericType)
+        {
+            return false;
+        }
+
+        foreach (var typeParameter in attributeType.OriginalDefinition.TypeParameters)
+        {
+            foreach (var constraintType in typeParameter.ConstraintTypes)
+            {
+                if (constraintType is INamedTypeSymbol namedConstraint && ImplementsIVial(namedConstraint, ivialSymbol))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static bool InheritsFromAttribute(INamedTypeSymbol symbol)
+    {
+        for (var current = symbol; current is not null; current = current.BaseType)
+        {
+            if (string.Equals(current.ToDisplayString(), "System.Attribute", StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool ImplementsIVial(INamedTypeSymbol symbol, INamedTypeSymbol ivialSymbol)
+    {
+        return SymbolEqualityComparer.Default.Equals(symbol, ivialSymbol)
+            || symbol.AllInterfaces.Any(@interface => SymbolEqualityComparer.Default.Equals(@interface, ivialSymbol));
+    }
+
+    private static IEnumerable<MetadataReference> GetMetadataReferences(string projectPath)
+    {
+        var references = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var trustedPlatformAssemblies = AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") as string;
+
+        if (!string.IsNullOrWhiteSpace(trustedPlatformAssemblies))
+        {
+            foreach (var assembly in trustedPlatformAssemblies.Split(Path.PathSeparator))
+            {
+                if (File.Exists(assembly))
+                {
+                    references.Add(assembly);
+                }
+            }
+        }
+
+        references.Add(ResolveTestingVialAssemblyPath(projectPath));
+
+        return references.Select(reference => MetadataReference.CreateFromFile(reference));
+    }
+
+    private static string ResolveTestingVialAssemblyPath(string projectPath)
+    {
+        var projectDirectory = Path.GetDirectoryName(projectPath)!;
+        var assetsPath = Path.Combine(projectDirectory, "obj", "project.assets.json");
+        if (!File.Exists(assetsPath))
+        {
+            return TryFindTestingVialAssemblyFromGlobalPackages("TestingVial.NET")
+                ?? throw new FileNotFoundException($"NuGet assets file not found. Run dotnet restore to generate it: {assetsPath}");
+        }
+
+        using var stream = File.OpenRead(assetsPath);
+        using var document = JsonDocument.Parse(stream);
+        var root = document.RootElement;
+
+        var packageNameWithVersion = root.GetProperty("libraries")
+            .EnumerateObject()
+            .Select(property => property.Name)
+            .FirstOrDefault(name => name.StartsWith("TestingVial.NET/", StringComparison.OrdinalIgnoreCase));
+
+        if (packageNameWithVersion is null)
+        {
+            return TryFindTestingVialAssemblyFromGlobalPackages("TestingVial.NET")
+                ?? throw new InvalidOperationException("Could not resolve TestingVial.NET package. Ensure the package is referenced and dotnet restore has been run.");
+        }
+
+        var packageNameParts = packageNameWithVersion.Split('/', 2);
+        var packageId = packageNameParts[0];
+        var packageVersion = packageNameParts[1];
+        var packageFolders = root.GetProperty("packageFolders").EnumerateObject();
+        if (!packageFolders.Any())
+        {
+            return TryFindTestingVialAssemblyFromGlobalPackages(packageId)
+                ?? throw new InvalidOperationException("No NuGet package folders were found in project assets. Run dotnet restore and try again.");
+        }
+
+        var packageRoot = packageFolders.First().Name;
+
+        foreach (var target in root.GetProperty("targets").EnumerateObject())
+        {
+            if (!target.Value.TryGetProperty(packageNameWithVersion, out var packageTarget))
+            {
+                continue;
+            }
+
+            if (!packageTarget.TryGetProperty("compile", out var compileElement))
+            {
+                continue;
+            }
+
+            var relativeAssemblyPath = compileElement.EnumerateObject()
+                .Select(property => property.Name)
+                .FirstOrDefault(path => path.EndsWith("TestingVial.NET.dll", StringComparison.OrdinalIgnoreCase));
+
+            if (relativeAssemblyPath is null)
+            {
+                continue;
+            }
+
+            var assemblyPath = Path.Combine(
+                packageRoot,
+                packageId,
+                packageVersion,
+                relativeAssemblyPath.Replace('/', Path.DirectorySeparatorChar));
+
+            if (File.Exists(assemblyPath))
+            {
+                return assemblyPath;
+            }
+
+            assemblyPath = Path.Combine(
+                packageRoot,
+                packageId.ToLowerInvariant(),
+                packageVersion,
+                relativeAssemblyPath.Replace('/', Path.DirectorySeparatorChar));
+
+            if (File.Exists(assemblyPath))
+            {
+                return assemblyPath;
+            }
+        }
+
+        return TryFindTestingVialAssemblyFromGlobalPackages(packageId)
+            ?? throw new FileNotFoundException("Could not locate TestingVial.NET assembly. Verify the target framework is compatible and run dotnet restore.");
+    }
+
+    private static string? TryFindTestingVialAssemblyFromGlobalPackages(string packageId)
+    {
+        var packageRoots = new List<string>();
+        var nugetPackages = Environment.GetEnvironmentVariable("NUGET_PACKAGES");
+
+        if (!string.IsNullOrWhiteSpace(nugetPackages))
+        {
+            packageRoots.Add(nugetPackages);
+        }
+
+        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (!string.IsNullOrWhiteSpace(userProfile))
+        {
+            packageRoots.Add(Path.Combine(userProfile, ".nuget", "packages"));
+        }
+
+        foreach (var packageRoot in packageRoots.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var packageDirectories = new[]
+            {
+                Path.Combine(packageRoot, packageId),
+                Path.Combine(packageRoot, packageId.ToLowerInvariant())
+            };
+
+            var existingPackageDirectory = packageDirectories.FirstOrDefault(Directory.Exists);
+            if (existingPackageDirectory is null)
+            {
+                continue;
+            }
+
+            var assemblyPath = Directory.EnumerateDirectories(existingPackageDirectory)
+                .Select(versionDirectory => new
+                {
+                    Directory = versionDirectory,
+                    ParsedVersion = ParseVersionForOrdering(Path.GetFileName(versionDirectory)),
+                    IsPrerelease = IsPrereleaseVersion(Path.GetFileName(versionDirectory))
+                })
+                .OrderByDescending(item => item.ParsedVersion)
+                .ThenByDescending(item => !item.IsPrerelease)
+                .ThenByDescending(item => item.Directory, StringComparer.OrdinalIgnoreCase)
+                .SelectMany(item => Directory.EnumerateFiles(item.Directory, "TestingVial.NET.dll", SearchOption.AllDirectories))
+                .FirstOrDefault();
+
+            if (assemblyPath is not null)
+            {
+                return assemblyPath;
+            }
+        }
+
+        return null;
+    }
+
+    private static Version ParseVersionForOrdering(string version)
+    {
+        var stablePortion = version.Split('-', 2)[0];
+        return Version.TryParse(stablePortion, out var parsedVersion)
+            ? parsedVersion
+            : new Version(0, 0);
+    }
+
+    private static bool IsPrereleaseVersion(string version)
+    {
+        return version.Contains('-', StringComparison.Ordinal);
+    }
+}
