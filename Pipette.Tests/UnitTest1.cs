@@ -43,8 +43,8 @@ public class PipetteToolTests
             var content = File.ReadAllText(outputPath);
             Assert.That(content, Does.Contain("vial-version: 2.0"));
             Assert.That(content, Does.Contain("project: DummyTestProject.csproj"));
-            Assert.That(content, Does.Contain("- IVial:"));
-            Assert.That(content, Does.Contain("- UnitTestVial:"));
+            Assert.That(content, Does.Contain("- UnitTestVial: 1").Or.Contain("- UnitTestVialAttribute: 1"));
+            Assert.That(content, Does.Not.Contain("- IVial:"));
         }
         finally
         {
