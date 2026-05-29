@@ -3,4 +3,4 @@ This repository handles the dotnet tool that searches for the Testing Vial in a 
 
 ## Usage
 
-`pipette (--project <path-to-csproj> | --solution <path-to-sln>) [--vial-version <version>]`
+`pipette (--project <path-to-csproj> | --solution <path-to-slnx>) [--vial-version <version>]`

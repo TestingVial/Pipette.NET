@@ -61,7 +61,7 @@ public class PipetteToolTests
 
         while (current is not null)
         {
-            if (File.Exists(Path.Combine(current.FullName, "Pipette.sln")))
+            if (File.Exists(Path.Combine(current.FullName, "Pipette.slnx")))
             {
                 return current.FullName;
             }
