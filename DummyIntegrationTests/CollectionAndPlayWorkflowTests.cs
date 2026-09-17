@@ -1,9 +1,9 @@
-﻿using DummyCoreProject.Domain;
+using DummyCoreProject.Domain;
 using DummyCoreProject.Services;
 
 namespace DummyIntegrationTests;
 
-public class IntegrationTest1
+public class CollectionAndPlayWorkflowTests
 {
     [Fact]
     public void UserCanCollectAndPlayAGameWithOtherUsers()

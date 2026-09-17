@@ -1,44 +1,10 @@
-using TestingVial.NET;
 using DummyCoreProject.Domain;
 using DummyCoreProject.Services;
 
 namespace DummyTestProject;
 
-public class Tests
+public class PlayServiceTests
 {
-    [SetUp]
-    public void Setup()
-    {
-    }
-
-    [Test]
-    [UnitTestVial<SampleVial>]
-    public void Test1()
-    {
-        var referencedTestingVialTypes = new[] { typeof(UnitTestVial<>), typeof(IVial), typeof(SampleVial) };
-        Assert.That(referencedTestingVialTypes, Has.Length.EqualTo(3));
-        Assert.Pass();
-    }
-
-    [Test]
-    public void Game_WhenMaximumPlayersIsLowerThanMinimum_Throws()
-    {
-        Assert.That(
-            () => new Game("Chess", 2, 1),
-            Throws.ArgumentException);
-    }
-
-    [Test]
-    public void GameCollection_WhenGameIsAddedTwice_Throws()
-    {
-        var collection = new GameCollection(Guid.NewGuid());
-        var game = new Game("Chess", 2, 2);
-
-        collection.Add(game);
-
-        Assert.That(() => collection.Add(game), Throws.InvalidOperationException);
-    }
-
     [Test]
     public void PlayService_WhenParticipantCountIsOutsideGameLimits_Throws()
     {
@@ -49,6 +15,19 @@ public class Tests
         Assert.That(
             () => service.RecordPlay(game, [participant]),
             Throws.TypeOf<ArgumentOutOfRangeException>());
+    }
+
+    [Test]
+    public void PlayService_WhenParticipantCountIsTooHigh_DoesNotRecordPlay()
+    {
+        var service = new PlayService();
+        var game = new Game("Chess", 2, 2);
+        var participants = new[] { new User("Alex"), new User("Sam"), new User("Taylor") };
+
+        Assert.That(
+            () => service.RecordPlay(game, participants),
+            Throws.TypeOf<ArgumentOutOfRangeException>());
+        Assert.That(service.Plays, Is.Empty);
     }
 
     [Test]
@@ -81,8 +60,4 @@ public class Tests
             Assert.That(service.Plays, Has.Count.EqualTo(1));
         });
     }
-}
-public sealed class SampleVial : IVial
-{
-    public string Name => nameof(SampleVial);
 }

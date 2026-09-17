@@ -20,8 +20,4 @@
     <Using Include="NUnit.Framework" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Pipette\Pipette.csproj" />
-  </ItemGroup>
-
 </Project>
