@@ -1,21 +1,30 @@
 using System.Text.Json;
 using Json.Schema;
+using Pipette.Core.Model;
 
 namespace Pipette.Core.Tests.EndToEnd;
 
-/// <summary>The VialSchemas v0.0.1 JSON schema, embedded in the test assembly.</summary>
+/// <summary>
+/// The VialSchemas schema that Pipette targets (<see cref="VialDocument.CurrentSchemaVersion"/>), embedded in the test
+/// assembly from <c>Schemas/</c>.
+/// </summary>
 internal static class VialSchema
 {
-    private const string ResourceName = "Pipette.Core.Tests.Schemas.v0.0.1.json";
+    public static string FileName { get; } = $"v{VialDocument.CurrentSchemaVersion}.json";
+
+    private static readonly string ResourceName = $"Pipette.Core.Tests.Schemas.{FileName}";
 
     // Building a schema registers its $id globally, so it must only be built once per process.
-    private static readonly Lazy<JsonSchema> Schema = new(() =>
+    private static readonly Lazy<JsonSchema> Schema = new(() => JsonSchema.FromText(Text()));
+
+    /// <summary>The embedded schema file, as text.</summary>
+    public static string Text()
     {
         using var stream = typeof(VialSchema).Assembly.GetManifestResourceStream(ResourceName)
             ?? throw new InvalidOperationException($"Embedded resource '{ResourceName}' not found.");
         using var reader = new StreamReader(stream);
-        return JsonSchema.FromText(reader.ReadToEnd());
-    });
+        return reader.ReadToEnd();
+    }
 
     public static EvaluationResults Evaluate(string json)
     {

@@ -24,8 +24,6 @@ public class EndToEndTests(FixtureGeneration fixture)
         Expected("Search", "Search_WithoutDescription", "unit", "SampleTests.SearchTests", "Search_WithoutDescription"),
     ];
 
-    private static readonly string[] SchemaTypes = ["unit", "integration", "e2e"];
-
     private static Vial Expected(string name, string description, string type, string className, string methodName) =>
         new(name, description, type, Vial.CSharpTechnology, new SourceLocation(className, methodName));
 
@@ -47,7 +45,7 @@ public class EndToEndTests(FixtureGeneration fixture)
     {
         Assert.NotNull(fixture.ProjectsRun.Document);
         Assert.Equal(VialWriter.Serialize(fixture.ProjectsRun.Document), fixture.ProjectsOutput);
-        Assert.StartsWith("{\n  \"schemaVersion\": \"0.0.1\",", fixture.ProjectsOutput);
+        Assert.StartsWith("{\n  \"schemaVersion\": \"0.0.2\",", fixture.ProjectsOutput);
     }
 
     [Fact]
@@ -94,69 +92,20 @@ public class EndToEndTests(FixtureGeneration fixture)
     }
 
     [Fact]
-    public void Output_OmitsFilePath_WhichIsTheOnlyLocationGapAgainstSchema()
+    public void Output_IsValidAgainstTheSchema_IncludingCustomTypes()
     {
-        // Known gap: v0.0.1 requires location.filePath, which Pipette no longer emits.
+        var results = VialSchema.Evaluate(fixture.ProjectsOutput);
+
+        Assert.True(results.IsValid, string.Join(Environment.NewLine, VialSchema.Errors(results)));
+        Assert.Contains("\"type\": \"performance\"", fixture.ProjectsOutput, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Output_HasNoFilePath()
+    {
         var output = JsonNode.Parse(fixture.ProjectsOutput)!;
+
         Assert.All(output["vials"]!.AsArray(), v => Assert.Null(v!["location"]!["filePath"]));
-
-        Assert.False(VialSchema.Evaluate(fixture.ProjectsOutput).IsValid);
-
-        var patched = WithPlaceholderFilePath(fixture.ProjectsOutput);
-        foreach (var vial in patched["vials"]!.AsArray().Where(v => (string?)v!["type"] == "performance"))
-        {
-            vial!["type"] = "unit";
-        }
-
-        var results = VialSchema.Evaluate(patched.ToJsonString());
-        Assert.True(results.IsValid, string.Join(Environment.NewLine, VialSchema.Errors(results)));
-    }
-
-    [Fact]
-    public void Output_WithSchemaTypesOnly_IsValidAgainstSchema()
-    {
-        Assert.NotNull(fixture.ProjectsRun.Document);
-        var document = fixture.ProjectsRun.Document with
-        {
-            Vials = fixture.ProjectsRun.Document.Vials.Where(v => SchemaTypes.Contains(v.Type)).ToList(),
-        };
-        Assert.Equal(["e2e", "integration", "unit"], document.Vials.Select(v => v.Type).Distinct().Order());
-
-        var results = VialSchema.Evaluate(WithPlaceholderFilePath(VialWriter.Serialize(document)).ToJsonString());
-
-        Assert.True(results.IsValid, string.Join(Environment.NewLine, VialSchema.Errors(results)));
-    }
-
-    [Fact]
-    public void Output_WithCustomPerformanceType_FailsSchemaOnlyOnTypeEnum()
-    {
-        // Known gap: v0.0.1 only allows unit/integration/e2e, while Pipette keeps custom test types lowercased.
-        var patched = WithPlaceholderFilePath(fixture.ProjectsOutput);
-        var results = VialSchema.Evaluate(patched.ToJsonString());
-
-        Assert.False(results.IsValid);
-        Assert.Equal(
-            [("/vials/3/type", "enum"), ("/vials/4/type", "enum")],
-            VialSchema.Errors(results).Where(e => e.Keyword == "enum").Order());
-
-        foreach (var vial in patched["vials"]!.AsArray().Where(v => (string?)v!["type"] == "performance"))
-        {
-            vial!["type"] = "unit";
-        }
-
-        var patchedResults = VialSchema.Evaluate(patched.ToJsonString());
-        Assert.True(patchedResults.IsValid, string.Join(Environment.NewLine, VialSchema.Errors(patchedResults)));
-    }
-
-    private static JsonNode WithPlaceholderFilePath(string json)
-    {
-        var node = JsonNode.Parse(json)!;
-        foreach (var vial in node["vials"]!.AsArray())
-        {
-            vial!["location"]!["filePath"] = "placeholder.cs";
-        }
-
-        return node;
     }
 
     private static List<string> Warnings(PipetteDiagnostics diagnostics) =>
