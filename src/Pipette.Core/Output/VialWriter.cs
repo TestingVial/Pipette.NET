@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Pipette.Core.Model;
 
 namespace Pipette.Core.Output;
@@ -15,6 +16,8 @@ public static class VialWriter
         IndentSize = 2,
         NewLine = "\n",
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        // Generic vials have no type: the property is left out, not written as null.
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
     private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
@@ -28,7 +31,7 @@ public static class VialWriter
         ArgumentNullException.ThrowIfNull(document);
 
         var vials = document.Vials
-            .Select(v => v with { Type = v.Type.ToLowerInvariant() })
+            .Select(v => v with { Type = v.Type?.ToLowerInvariant() })
             .OrderBy(v => v.Location.ClassName, StringComparer.Ordinal)
             .ThenBy(v => v.Location.MethodName, StringComparer.Ordinal)
             .ThenBy(v => v.Name, StringComparer.Ordinal)

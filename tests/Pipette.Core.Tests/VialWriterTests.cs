@@ -6,7 +6,7 @@ namespace Pipette.Core.Tests;
 
 public class VialWriterTests
 {
-    private static Vial MakeVial(string cls, string method, string name, string type = "unit") =>
+    private static Vial MakeVial(string cls, string method, string name, string? type = "unit") =>
         new(name, $"{name} description", type, Vial.CSharpTechnology, new SourceLocation(cls, method));
 
     [Fact]
@@ -45,6 +45,15 @@ public class VialWriterTests
             ["Ns.A|*|Cart", "Ns.A|Test1|Cart", "Ns.A|Test1|Product", "Ns.A|Test2|Cart", "Ns.B|M|Z"],
             normalized.Select(v => $"{v.Location.ClassName}|{v.Location.MethodName}|{v.Name}"));
         Assert.Equal("performance", normalized[2].Type);
+    }
+
+    [Fact]
+    public void Serialize_OmitsTheTypeOfGenericVials()
+    {
+        var json = VialWriter.Serialize(new VialDocument([MakeVial("Ns.A", "M", "Cart", type: null)]));
+
+        using var doc = JsonDocument.Parse(json);
+        Assert.False(doc.RootElement.GetProperty("vials")[0].TryGetProperty("type", out _));
     }
 
     [Fact]

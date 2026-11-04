@@ -3,12 +3,13 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Pipette.Core.Analysis;
 
-/// <summary>Values that an attribute constructor chain passes to the <c>VialAttribute(name, testType)</c> base.</summary>
+/// <summary>Values that an attribute constructor chain passes to the <c>VialAttribute(name[, testType])</c> base.</summary>
 /// <param name="Name">Vial name; <see langword="null"/> when it comes from the generic argument or could not be resolved.</param>
 /// <param name="NameFromGenericArgument">The chain reaches <c>TestingVialAttribute&lt;T&gt;</c>, so the name is <c>new T().Name</c>.</param>
-/// <param name="TestType">Test-type string, or <see langword="null"/> when it could not be resolved.</param>
+/// <param name="Typed">The chain passes a test type; <see langword="false"/> for generic vials such as <c>[TestingVial&lt;T&gt;]</c>.</param>
+/// <param name="TestType">Test-type string, or <see langword="null"/> when there is none or it could not be resolved.</param>
 /// <param name="Failure">Why the chain could not be followed, if it could not.</param>
-internal sealed record VialConstructorValues(string? Name, bool NameFromGenericArgument, string? TestType, string? Failure);
+internal sealed record VialConstructorValues(string? Name, bool NameFromGenericArgument, bool Typed, string? TestType, string? Failure);
 
 /// <summary>
 /// Follows an attribute constructor through its <c>: base(...)</c> / <c>: this(...)</c> initializers (or primary
@@ -33,47 +34,58 @@ internal sealed class AttributeConstructorEvaluator(SemanticModelProvider models
 
         if (TestingVialSymbols.Is(type, TestingVialSymbols.VialAttribute))
         {
-            return new(Arg(Ordinal(constructor, "name", 0)), false, Arg(Ordinal(constructor, "testType", 1)), null);
+            // VialAttribute(name) is the generic vial; VialAttribute(name, testType) the typed one.
+            var typed = constructor.Parameters.Length > 1;
+            return new(Arg(Ordinal(constructor, "name", 0)), false, typed, typed ? Arg(Ordinal(constructor, "testType", 1)) : null, null);
         }
 
-        if (TestingVialSymbols.Is(type, TestingVialSymbols.TestingVialAttribute))
+        if (TestingVialSymbols.Is(type, TestingVialSymbols.TestingVialAttributeGeneric))
         {
-            return new(null, true, Arg(Ordinal(constructor, "testType", 0)), null);
+            // TestingVialAttribute<T>() is the generic vial; TestingVialAttribute<T>(testType) the base of typed ones.
+            var typed = constructor.Parameters.Length > 0;
+            return new(null, true, typed, typed ? Arg(Ordinal(constructor, "testType", 0)) : null, null);
         }
 
-        if (constructor.DeclaringSyntaxReferences.Length > 0)
+        // An implicit parameterless constructor has no syntax of its own: use the class declaration.
+        if (constructor.DeclaringSyntaxReferences.Length > 0
+            || (constructor.IsImplicitlyDeclared && type.DeclaringSyntaxReferences.Length > 0))
         {
             return EvaluateSource(constructor, arguments, depth);
         }
 
+        if (TestingVialSymbols.Is(type, TestingVialSymbols.TestingVialAttribute))
+        {
+            return new(Arg(0), false, Typed: false, null, null);
+        }
+
         if (TestingVialSymbols.Is(type, TestingVialSymbols.UnitTestVial))
         {
-            return new(Arg(0), false, TestingVialSymbols.UnitTestType, null);
+            return new(Arg(0), false, Typed: true, TestingVialSymbols.UnitTestType, null);
         }
 
         if (TestingVialSymbols.Is(type, TestingVialSymbols.UnitTestVialGeneric))
         {
-            return new(null, true, TestingVialSymbols.UnitTestType, null);
+            return new(null, true, Typed: true, TestingVialSymbols.UnitTestType, null);
         }
 
         if (TestingVialSymbols.Is(type, TestingVialSymbols.IntegrationTestVial))
         {
-            return new(Arg(0), false, TestingVialSymbols.IntegrationTestType, null);
+            return new(Arg(0), false, Typed: true, TestingVialSymbols.IntegrationTestType, null);
         }
 
         if (TestingVialSymbols.Is(type, TestingVialSymbols.IntegrationTestVialGeneric))
         {
-            return new(null, true, TestingVialSymbols.IntegrationTestType, null);
+            return new(null, true, Typed: true, TestingVialSymbols.IntegrationTestType, null);
         }
 
         if (TestingVialSymbols.Is(type, TestingVialSymbols.EndToEndTestVial))
         {
-            return new(Arg(0), false, TestingVialSymbols.EndToEndTestType, null);
+            return new(Arg(0), false, Typed: true, TestingVialSymbols.EndToEndTestType, null);
         }
 
         if (TestingVialSymbols.Is(type, TestingVialSymbols.EndToEndTestVialGeneric))
         {
-            return new(null, true, TestingVialSymbols.EndToEndTestType, null);
+            return new(null, true, Typed: true, TestingVialSymbols.EndToEndTestType, null);
         }
 
         return Fail($"the constructor of '{type.ToDisplayString()}' is not available in source");
@@ -81,7 +93,7 @@ internal sealed class AttributeConstructorEvaluator(SemanticModelProvider models
 
     private VialConstructorValues EvaluateSource(IMethodSymbol constructor, IReadOnlyList<string?> arguments, int depth)
     {
-        var syntax = constructor.DeclaringSyntaxReferences[0].GetSyntax();
+        var syntax = (constructor.DeclaringSyntaxReferences.FirstOrDefault() ?? constructor.ContainingType.DeclaringSyntaxReferences[0]).GetSyntax();
         if (models.Get(syntax.SyntaxTree) is not { } model)
         {
             return Fail($"the source of '{constructor.ContainingType.ToDisplayString()}' is not part of the analyzed compilations");
@@ -178,5 +190,5 @@ internal sealed class AttributeConstructorEvaluator(SemanticModelProvider models
     private static int Ordinal(IMethodSymbol constructor, string parameterName, int fallback) =>
         constructor.Parameters.FirstOrDefault(p => p.Name == parameterName)?.Ordinal ?? fallback;
 
-    private static VialConstructorValues Fail(string reason) => new(null, false, null, reason);
+    private static VialConstructorValues Fail(string reason) => new(null, false, false, null, reason);
 }

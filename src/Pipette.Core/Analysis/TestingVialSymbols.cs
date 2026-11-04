@@ -11,7 +11,8 @@ internal static class TestingVialSymbols
     public const string Namespace = "TestingVial.NET";
     public const string IVial = "IVial";
     public const string VialAttribute = "VialAttribute";
-    public const string TestingVialAttribute = "TestingVialAttribute`1";
+    public const string TestingVialAttribute = "TestingVialAttribute";
+    public const string TestingVialAttributeGeneric = "TestingVialAttribute`1";
     public const string UnitTestVial = "UnitTestVial";
     public const string UnitTestVialGeneric = "UnitTestVial`1";
     public const string IntegrationTestVial = "IntegrationTestVial";
@@ -47,7 +48,7 @@ internal static class TestingVialSymbols
     {
         for (var current = attributeClass; current is not null; current = current.BaseType)
         {
-            if (Is(current, TestingVialAttribute))
+            if (Is(current, TestingVialAttributeGeneric))
             {
                 return current;
             }

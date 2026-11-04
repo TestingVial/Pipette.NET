@@ -84,7 +84,7 @@ Each vial attribute found on a class or method becomes one entry:
 |---|---|
 | `name` | Generic form (`[UnitTestVial<CartVial>]`): the constant returned by `CartVial`'s `IVial.Name` (expression body, getter with a single `return`, property initializer, or `const`). String form (`[UnitTestVial("Cart")]`): the string argument. |
 | `description` | The `Description` named argument. When it's missing, empty or whitespace: the method name, or the simple class name (e.g. `CartTests`) for an attribute placed on the class. |
-| `type` | Derived from the attribute's test type (see below). |
+| `type` | Derived from the attribute's test type (see below). Left out for generic vials, which have no test type. |
 | `technology` | Always `csharp`. |
 | `location.className` | The fully qualified name of the containing type, e.g. `Shop.Tests.CartTests` or `Shop.Tests.Outer.Inner`. |
 | `location.methodName` | The method name, or `*` for an attribute placed on the class. |
@@ -94,6 +94,10 @@ Entries are sorted by class, method and name, so the output is stable between ru
 **Test types.** `Unit` maps to `unit`, `Integration` to `integration`, and `E2E` or `EndToEnd` (any casing) to `e2e`.
 Any other test type is kept and lowercased, so a custom `PerformanceTestVial` produces `performance`; schema v0.0.2 allows
 any non-empty `type`.
+
+**Generic vials.** `[TestingVial<CartVial>]` and `[TestingVial("Cart")]` (TestingVial.NET 1.1.0) mark a vial without a test type,
+so their entries have no `type`; schema v0.0.2 makes it optional. Custom attributes that call the type-less base constructor
+(`TestingVialAttribute<T>()` or `VialAttribute(name)`) are generic vials too.
 
 **Custom attributes** defined in source are supported, in both forms from the TestingVial.NET README:
 

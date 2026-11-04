@@ -19,15 +19,22 @@ public interface IVial
 public abstract class VialAttribute : Attribute
 {
     public string VialName { get; }              // NOT "Name"
-    public string TestType { get; }
+    public string? TestType { get; }             // null for generic vials
     public string? Description { get; init; }    // named argument, optional (nullable)
 
-    protected VialAttribute(string name, string testType);   // throws on null/whitespace
+    protected VialAttribute(string name);                    // generic vial, no test type
+    protected VialAttribute(string name, string testType);   // throw on null/whitespace
 }
 
-public abstract class TestingVialAttribute<T> : VialAttribute where T : IVial, new()
+public class TestingVialAttribute<T> : VialAttribute where T : IVial, new()   // abstract before 1.1.0
 {
-    public TestingVialAttribute(string testType) : base(new T().Name, testType);
+    public TestingVialAttribute() : base(new T().Name);                       // generic vial: [TestingVial<CartVial>]
+    protected TestingVialAttribute(string testType) : base(new T().Name, testType);   // public before 1.1.0
+}
+
+public class TestingVialAttribute : VialAttribute                             // generic vial: [TestingVial("Cart")]
+{
+    public TestingVialAttribute(string name) : base(name);
 }
 
 public class UnitTestVial<T> : TestingVialAttribute<T> where T : IVial, new()
@@ -67,7 +74,7 @@ Metadata names (for `Compilation.GetTypeByMetadataName`):
 |---|---|
 | `IVial` | `TestingVial.NET.IVial` |
 | `VialAttribute` | `TestingVial.NET.VialAttribute` |
-| `TestingVialAttribute<T>` | ``TestingVial.NET.TestingVialAttribute`1`` |
+| `TestingVialAttribute<T>` / `TestingVialAttribute` | ``TestingVial.NET.TestingVialAttribute`1`` / `TestingVial.NET.TestingVialAttribute` |
 | `UnitTestVial` / `UnitTestVial<T>` | `TestingVial.NET.UnitTestVial` / ``TestingVial.NET.UnitTestVial`1`` |
 | `IntegrationTestVial` / `IntegrationTestVial<T>` | `TestingVial.NET.IntegrationTestVial` / ``TestingVial.NET.IntegrationTestVial`1`` |
 | `EndToEndTestVial` / `EndToEndTestVial<T>` | `TestingVial.NET.EndToEndTestVial` / ``TestingVial.NET.EndToEndTestVial`1`` |
@@ -93,6 +100,8 @@ Custom attributes pick any string (README example: `"Performance"`).
 - **Name, string form:** for the built-ins it's `ConstructorArguments[0]` (`string name`).
 - **Test type:** this is not in attribute data. It's a constant in the subclass ctor's `: base(...)` initializer:
   - Built-ins: map by original definition `UnitTestVial`/`UnitTestVial<T>` → `"Unit"`, `IntegrationTestVial`/`IntegrationTestVial<T>` → `"Integration"`, `EndToEndTestVial`/`EndToEndTestVial<T>` → `"E2E"`.
+  - Generic vials have none: `TestingVialAttribute<T>()`, `TestingVialAttribute(name)` and `VialAttribute(name)`, or a custom
+    attribute whose chain ends in one of them (including an implicit `base()` call). Pipette writes them without `type`.
   - Custom generic (`: TestingVialAttribute<T>`): `base(testType)`, which is the **1st** (only) argument.
   - Custom non-generic (`: VialAttribute`): `base(name, testType)`, which is the **2nd** argument, and the 1st is usually the ctor's `name` parameter.
   - A custom attribute may derive from another custom attribute. Follow the chain until you reach a constant.

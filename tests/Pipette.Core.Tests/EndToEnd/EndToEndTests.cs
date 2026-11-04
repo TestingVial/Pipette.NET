@@ -23,9 +23,11 @@ public class EndToEndTests(FixtureGeneration fixture)
         Expected("Catalog", "SearchTests", "integration", "SampleTests.SearchTests", "*"),
         Expected("Search", "Search matches products by name", "unit", "SampleTests.SearchTests", "Search_MatchesByName"),
         Expected("Search", "Search_WithoutDescription", "unit", "SampleTests.SearchTests", "Search_WithoutDescription"),
+        Expected("Cart", "Wishlists can be turned into carts", null, "SampleTests.WishlistTests", "*"),
+        Expected("Wishlist", "Wishlists keep products for later", null, "SampleTests.WishlistTests", "Add_KeepsProduct"),
     ];
 
-    private static Vial Expected(string name, string description, string type, string className, string methodName) =>
+    private static Vial Expected(string name, string description, string? type, string className, string methodName) =>
         new(name, description, type, Vial.CSharpTechnology, new SourceLocation(className, methodName));
 
     [Fact]
@@ -99,6 +101,16 @@ public class EndToEndTests(FixtureGeneration fixture)
 
         Assert.True(results.IsValid, string.Join(Environment.NewLine, VialSchema.Errors(results)));
         Assert.Contains("\"type\": \"performance\"", fixture.ProjectsOutput, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GenericVials_AreWrittenWithoutType()
+    {
+        var output = JsonNode.Parse(fixture.ProjectsOutput)!;
+
+        var generic = output["vials"]!.AsArray().Where(v => (string?)v!["location"]!["className"] == "SampleTests.WishlistTests").ToList();
+        Assert.Equal(2, generic.Count);
+        Assert.All(generic, v => Assert.False(v!.AsObject().ContainsKey("type")));
     }
 
     [Fact]
