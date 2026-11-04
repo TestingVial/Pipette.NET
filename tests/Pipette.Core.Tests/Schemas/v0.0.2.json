@@ -23,7 +23,6 @@
       "required": [
         "name",
         "description",
-        "technology",
         "location"
       ],
       "properties": {
@@ -33,7 +32,7 @@
           "minLength": 1
         },
         "description": {
-          "description": "What the test verifies about the vial.",
+          "description": "What the test expresses about the business entity.",
           "type": "string",
           "minLength": 1
         },
