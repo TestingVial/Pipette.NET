@@ -2,7 +2,7 @@
 
 Pipette.NET is a .NET global tool (`pipette`) that reads the [TestingVial.NET](https://github.com/TestingVial/TestingVial.NET)
 attributes in your test projects and writes a `.vial` file: a JSON catalogue of which tests cover which features, conforming to the
-[VialSchemas v0.0.1](https://github.com/TestingVial/VialSchemas/blob/main/schemas/v0.0.1.json) schema.
+[VialSchemas v0.0.2](https://github.com/TestingVial/VialSchemas/blob/main/schemas/v0.0.2.json) schema.
 
 It analyzes the **source code** with Roslyn (`MSBuildWorkspace`); your projects are never built or executed.
 
@@ -80,15 +80,11 @@ Each vial attribute found on a class or method becomes one entry:
 | `location.className` | The fully qualified name of the containing type, e.g. `Shop.Tests.CartTests` or `Shop.Tests.Outer.Inner`. |
 | `location.methodName` | The method name, or `*` for an attribute placed on the class. |
 
-Pipette does not emit `location.filePath`. **The v0.0.1 schema requires it**, so the output will not validate against v0.0.1
-until the schema makes it optional.
-
 Entries are sorted by class, method and name, so the output is stable between runs.
 
 **Test types.** `Unit` maps to `unit`, `Integration` to `integration`, and `E2E` or `EndToEnd` (any casing) to `e2e`.
-Any other test type is kept and lowercased, so a custom `PerformanceTestVial` produces `performance`. **The v0.0.1 schema
-only allows `unit`, `integration` and `e2e`**, so a file that contains custom types will not validate against v0.0.1 until the
-schema is widened.
+Any other test type is kept and lowercased, so a custom `PerformanceTestVial` produces `performance`; schema v0.0.2 allows
+any non-empty `type`.
 
 **Custom attributes** defined in source are supported, in both forms from the TestingVial.NET README:
 
@@ -120,7 +116,7 @@ For the fixture project in `tests/Fixtures/SampleTests` (excerpt of `pipette tes
 
 ```json
 {
-  "schemaVersion": "0.0.1",
+  "schemaVersion": "0.0.2",
   "vials": [
     {
       "name": "Cart",
@@ -166,8 +162,6 @@ For the fixture project in `tests/Fixtures/SampleTests` (excerpt of `pipette tes
   source; attributes that come from a NuGet package or a DLL reference (rather than a project in the workspace) are skipped with a
   warning. The built-in `UnitTestVial` and `IntegrationTestVial` are always recognized.
 - **Only the first target framework is analyzed** for multi-targeted projects.
-- **Output fails v0.0.1 validation** because `location.filePath` is not emitted and custom test types are kept (see
-  [How attributes are mapped](#how-attributes-are-mapped)).
 
 ## Building and testing this repository
 
@@ -182,7 +176,9 @@ The SDK version is pinned by `global.json` (.NET 10), and tests run on Microsoft
 - `src/Pipette.Cli`: the `pipette` command line (System.CommandLine), packaged as the `Pipette.NET` tool.
 - `tests/Pipette.Core.Tests`: unit tests over in-memory Roslyn compilations, plus end-to-end tests (`EndToEnd/`) that restore the
   fixture projects, run the whole pipeline once on `tests/Fixtures/Fixtures.slnx` and on the project files, validate the output
-  against the embedded v0.0.1 schema with JsonSchema.Net, and run the built CLI.
+  against the embedded v0.0.2 schema with JsonSchema.Net, and run the built CLI. The embedded copy
+  (`tests/Pipette.Core.Tests/Schemas/`) must stay identical to the VialSchemas file: `EmbeddedSchemaTests` compares them when
+  VialSchemas is cloned next to this repository (or `VIALSCHEMAS_DIR` points at it), and is skipped otherwise.
 - `tests/Fixtures`: `SampleTests` (an xUnit project covering generic, string, class-level, multiple-per-method, custom
   `performance` and `e2e` attributes, and missing descriptions on a method and a class) and `NonTestLibrary` (a plain library that must be discarded).
   They are isolated from the repository's `Directory.Build.props` and are not part of `Pipette.NET.slnx`.

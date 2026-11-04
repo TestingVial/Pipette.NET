@@ -16,7 +16,7 @@ public class VialWriterTests
 
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
-        Assert.Equal("0.0.1", root.GetProperty("schemaVersion").GetString());
+        Assert.Equal("0.0.2", root.GetProperty("schemaVersion").GetString());
 
         var vial = root.GetProperty("vials")[0];
         Assert.Equal("Cart", vial.GetProperty("name").GetString());

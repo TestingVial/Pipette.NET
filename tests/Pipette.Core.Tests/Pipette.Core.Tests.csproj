@@ -19,7 +19,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Schemas\v0.0.1.json" LogicalName="Pipette.Core.Tests.Schemas.v0.0.1.json" />
+    <!-- Copies of VialSchemas/schemas/*.json; EmbeddedSchemaTests checks they are identical. -->
+    <EmbeddedResource Include="Schemas\*.json" LogicalName="Pipette.Core.Tests.Schemas.%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

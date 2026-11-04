@@ -17,7 +17,8 @@ dotnet test                                    # run from this folder: global.js
 
 - .NET 10 SDK (`global.json`: 10.0.100, `rollForward: latestFeature`). `Directory.Build.props` sets `TreatWarningsAsErrors`.
 - Tests: xunit v3 in `tests/Pipette.Core.Tests`. End-to-end tests run the CLI against `tests/Fixtures` and validate the output
-  against the schema copy embedded from `tests/Pipette.Core.Tests/Schemas/` — keep that copy identical to `VialSchemas/schemas/`.
+  against the schema copy embedded from `tests/Pipette.Core.Tests/Schemas/v<CurrentSchemaVersion>.json` — keep it identical to
+  `VialSchemas/schemas/` (`EmbeddedSchemaTests` compares them when `../VialSchemas` or `VIALSCHEMAS_DIR` exists).
 
 ## Layout
 
