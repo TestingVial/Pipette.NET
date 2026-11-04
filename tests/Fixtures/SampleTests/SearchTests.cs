@@ -3,6 +3,7 @@ using Xunit;
 
 namespace SampleTests;
 
+[IntegrationTestVial("Catalog")]
 public class SearchTests
 {
     [Fact]

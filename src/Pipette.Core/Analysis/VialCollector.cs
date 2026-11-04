@@ -28,12 +28,12 @@ public sealed class VialCollector(PipetteDiagnostics diagnostics)
             cancellationToken.ThrowIfCancellationRequested();
             var className = type.ToDisplayString(ClassNameFormat);
 
-            Collect(context, type, className, SourceLocation.ClassLevel, vials);
+            Collect(context, type, className, SourceLocation.ClassLevel, type.Name, vials);
             foreach (var method in type.GetMembers().OfType<IMethodSymbol>())
             {
                 if (method.MethodKind == MethodKind.Ordinary)
                 {
-                    Collect(context, method, className, method.Name, vials);
+                    Collect(context, method, className, method.Name, method.Name, vials);
                 }
             }
         }
@@ -41,7 +41,9 @@ public sealed class VialCollector(PipetteDiagnostics diagnostics)
         return Task.FromResult<IReadOnlyList<Vial>>(vials);
     }
 
-    private void Collect(CollectionContext context, ISymbol symbol, string className, string methodName, List<Vial> vials)
+    /// <param name="fallbackDescription">Used when an attribute has no Description: the method name, or the simple class name.</param>
+    private void Collect(
+        CollectionContext context, ISymbol symbol, string className, string methodName, string fallbackDescription, List<Vial> vials)
     {
         foreach (var attribute in symbol.GetAttributes())
         {
@@ -57,7 +59,7 @@ public sealed class VialCollector(PipetteDiagnostics diagnostics)
                         $"[{attributeClass.ToDisplayString()}] on {className}.{methodName}";
 
             var location = new SourceLocation(className, methodName);
-            if (TryCreate(context, attribute, attributeClass, location, where) is { } vial)
+            if (TryCreate(context, attribute, attributeClass, location, fallbackDescription, where) is { } vial)
             {
                 vials.Add(vial);
             }
@@ -65,7 +67,12 @@ public sealed class VialCollector(PipetteDiagnostics diagnostics)
     }
 
     private Vial? TryCreate(
-        CollectionContext context, AttributeData attribute, INamedTypeSymbol attributeClass, SourceLocation location, string where)
+        CollectionContext context,
+        AttributeData attribute,
+        INamedTypeSymbol attributeClass,
+        SourceLocation location,
+        string fallbackDescription,
+        string where)
     {
         if (attribute.AttributeConstructor is not { } constructor)
         {
@@ -99,8 +106,9 @@ public sealed class VialCollector(PipetteDiagnostics diagnostics)
             .LastOrDefault();
         if (string.IsNullOrWhiteSpace(description))
         {
-            diagnostics.Warn($"{where}: '{name}' has no Description; entry skipped.");
-            return null;
+            // Not a warning: TestingVial.NET's analyzer (TV0001) already warns about it where the attribute is written.
+            diagnostics.Verbose($"{where}: '{name}' has no Description; using '{fallbackDescription}'.");
+            description = fallbackDescription;
         }
 
         return new Vial(name, description, TestTypeMapper.Map(values.TestType), Vial.CSharpTechnology, location);

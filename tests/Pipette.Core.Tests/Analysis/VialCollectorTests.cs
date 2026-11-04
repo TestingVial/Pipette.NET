@@ -1,4 +1,5 @@
 using Microsoft.CodeAnalysis;
+using Pipette.Core.Diagnostics;
 using Pipette.Core.Model;
 using static Pipette.Core.Tests.Analysis.TestCompilation;
 
@@ -81,15 +82,44 @@ public class VialCollectorTests
     [InlineData("(Description = \"\")")]
     [InlineData("(Description = null)")]
     [InlineData("(Description = \"   \")")]
-    public async Task MissingOrEmptyDescription_SkipsEntryWithWarning(string arguments)
+    public async Task MissingOrEmptyDescription_OnAMethod_UsesTheMethodName(string arguments)
     {
         var (vials, diagnostics) = await CollectAsync(Usings + CartVial +
-            $"public class T {{ [UnitTestVial<CartVial>{arguments}] public void M() {{ }} }}");
+            $"public class T {{ [UnitTestVial<CartVial>{arguments}] public void AddToCart_AddsProduct() {{ }} }}");
 
-        Assert.Empty(vials);
-        var warning = Assert.Single(diagnostics.Warnings());
-        Assert.Contains("Description", warning);
-        Assert.Contains("Tests/SampleTests.cs(3)", warning);
+        Assert.Equal("AddToCart_AddsProduct", Assert.Single(vials).Description);
+        Assert.Empty(diagnostics.Warnings());
+        var note = Assert.Single(diagnostics.Messages);
+        Assert.Equal(PipetteSeverity.Verbose, note.Severity);
+        Assert.Contains("Tests/SampleTests.cs(3)", note.Text);
+        Assert.Contains("'Cart' has no Description; using 'AddToCart_AddsProduct'", note.Text);
+    }
+
+    [Fact]
+    public async Task MissingDescription_OnAClass_UsesTheSimpleClassName()
+    {
+        var (vials, diagnostics) = await CollectAsync(Usings + CartVial + """
+            namespace Shop.Tests
+            {
+                [IntegrationTestVial<CartVial>]
+                public class CartTests
+                {
+                    [UnitTestVial("Product", Description = "")] public void M() { }
+
+                    [UnitTestVial("Inner")]
+                    public class Nested { }
+                }
+            }
+            """);
+
+        Assert.Empty(diagnostics.Warnings());
+        Assert.Equal(
+            [
+                "Shop.Tests.CartTests.Nested|*|Nested",
+                "Shop.Tests.CartTests|*|CartTests",
+                "Shop.Tests.CartTests|M|M",
+            ],
+            vials.Select(v => $"{v.Location.ClassName}|{v.Location.MethodName}|{v.Description}").Order(StringComparer.Ordinal));
     }
 
     [Theory]

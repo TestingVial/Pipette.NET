@@ -86,7 +86,8 @@ Custom attributes pick any string (README example: `"Performance"`).
   - Custom non-generic (`: VialAttribute`): `base(name, testType)`, which is the **2nd** argument, and the 1st is usually the ctor's `name` parameter.
   - A custom attribute may derive from another custom attribute. Follow the chain until you reach a constant.
 - **Description:** this is the named argument `Description` (`attributeData.NamedArguments`). It can be missing or null.
-  The schema requires `minLength: 1`, so skip the entry with a warning.
+  The schema requires `minLength: 1`, so Pipette uses the method name (or the simple class name for a class-level attribute)
+  and reports a verbose note. From 1.1.0 the package's analyzer warns about it (`TV0001`).
 - Example of a custom attribute, from the package README:
   ```csharp
   public class PerformanceTestVial<T> : TestingVialAttribute<T> where T : IVial, new()

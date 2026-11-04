@@ -74,7 +74,7 @@ Each vial attribute found on a class or method becomes one entry:
 | Field | Value |
 |---|---|
 | `name` | Generic form (`[UnitTestVial<CartVial>]`): the constant returned by `CartVial`'s `IVial.Name` (expression body, getter with a single `return`, property initializer, or `const`). String form (`[UnitTestVial("Cart")]`): the string argument. |
-| `description` | The `Description` named argument. |
+| `description` | The `Description` named argument. When it's missing, empty or whitespace: the method name, or the simple class name (e.g. `CartTests`) for an attribute placed on the class. |
 | `type` | Derived from the attribute's test type (see below). |
 | `technology` | Always `csharp`. |
 | `location.className` | The fully qualified name of the containing type, e.g. `Shop.Tests.CartTests` or `Shop.Tests.Outer.Inner`. |
@@ -103,8 +103,11 @@ public class PerformanceTestVial : VialAttribute
 Pipette follows the constructor's `: base(...)` / `: this(...)` chain (and primary-constructor base arguments) until it reaches a
 constant test type, so attributes derived from other custom attributes also work.
 
-**Skipped entries.** An attribute without a `Description` (or with an empty one) is skipped with a warning, because the schema
-requires a non-empty description. Attributes whose test type or string name isn't a compile-time constant are skipped with a warning too.
+**Missing descriptions.** The schema requires a non-empty description, so an attribute without a `Description` (or with an empty
+one) gets the method or class name instead, and Pipette reports it as a note (shown with `--verbose`), not a warning, so `--strict`
+doesn't fail on it. TestingVial.NET 1.1.0 and later warn about it at compile time (rule `TV0001`).
+
+**Skipped entries.** Attributes whose test type or string name isn't a compile-time constant are skipped with a warning.
 
 **Test-project detection.** A project is analyzed when its evaluated MSBuild property `IsTestProject` is `true` (set by
 `Microsoft.NET.Test.Sdk`, MSTest.Sdk and similar), or when it references a known test framework (`xunit`, `xunit.v3`, `NUnit`,
@@ -181,6 +184,6 @@ The SDK version is pinned by `global.json` (.NET 10), and tests run on Microsoft
   fixture projects, run the whole pipeline once on `tests/Fixtures/Fixtures.slnx` and on the project files, validate the output
   against the embedded v0.0.1 schema with JsonSchema.Net, and run the built CLI.
 - `tests/Fixtures`: `SampleTests` (an xUnit project covering generic, string, class-level, multiple-per-method, custom
-  `performance` and `e2e` attributes, and a missing description) and `NonTestLibrary` (a plain library that must be discarded).
+  `performance` and `e2e` attributes, and missing descriptions on a method and a class) and `NonTestLibrary` (a plain library that must be discarded).
   They are isolated from the repository's `Directory.Build.props` and are not part of `Pipette.NET.slnx`.
 - `docs/testingvial-api.md`: the TestingVial.NET 1.0.1 API that the analysis relies on.
