@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/TestingVial/JsonSchemas/main/schemas/v0.0.1.json",
+  "title": "Vial Schema v0.0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "vials"],
+  "properties": {
+    "schemaVersion": {
+      "const": "0.0.1"
+    },
+    "vials": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/vial"
+      }
+    }
+  },
+  "$defs": {
+    "vial": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "description",
+        "type",
+        "technology",
+        "location"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "enum": ["unit", "integration", "e2e"]
+        },
+        "technology": {
+          "type": "string",
+          "minLength": 1
+        },
+        "location": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sourceLocation"
+            },
+            {
+              "$ref": "#/$defs/urlLocation"
+            }
+          ]
+        }
+      }
+    },
+    "sourceLocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["filePath", "className", "methodName"],
+      "properties": {
+        "filePath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "className": {
+          "type": "string",
+          "minLength": 1
+        },
+        "methodName": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "urlLocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url"],
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    }
+  }
+}

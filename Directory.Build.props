@@ -1,0 +1,18 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <!--
+    Microsoft.CodeAnalysis.Workspaces.MSBuild brings Microsoft.Build.Framework transitively.
+    MSBuildLocator requires MSBuild assemblies to come from the installed SDK at run time, never from the
+    app folder, so every project in the graph must exclude their runtime assets (Locator check MSBL001).
+  -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Build.Framework" Version="17.11.48" ExcludeAssets="runtime" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

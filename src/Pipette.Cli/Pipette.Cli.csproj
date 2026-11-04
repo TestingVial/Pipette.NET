@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Pipette.Cli</RootNamespace>
+    <!-- System.CommandLine names the root command after the executable, so help and errors read "pipette". -->
+    <AssemblyName>pipette</AssemblyName>
+    <RollForward>Major</RollForward>
+
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>pipette</ToolCommandName>
+    <PackageId>Pipette.NET</PackageId>
+    <Version>0.1.0</Version>
+    <Description>Generates .vial files from TestingVial.NET attributes using Roslyn source analysis.</Description>
+    <PackageTags>testing testing-vial vial roslyn</PackageTags>
+    <PackageOutputPath>$(MSBuildThisFileDirectory)..\..\artifacts\nupkg</PackageOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" Version="2.0.14" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Pipette.Core\Pipette.Core.csproj" />
+  </ItemGroup>
+
+</Project>

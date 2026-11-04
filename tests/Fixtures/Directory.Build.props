@@ -1,0 +1,3 @@
+<Project>
+  <!-- Fixtures are analyzed by Pipette, not built as part of Pipette.NET.slnx: keep them isolated from the repo-level props. -->
+</Project>

@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
+    <PackageReference Include="xunit.v3" Version="4.0.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1" />
+    <PackageReference Include="JsonSchema.Net" Version="9.5.0" />
+    <PackageReference Include="TestingVial.NET" Version="1.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Schemas\v0.0.1.json" LogicalName="Pipette.Core.Tests.Schemas.v0.0.1.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Pipette.Core\Pipette.Core.csproj" />
+    <!-- Built so CliSmokeTests can run it without building it first; not referenced as an assembly. -->
+    <ProjectReference Include="..\..\src\Pipette.Cli\Pipette.Cli.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+</Project>
