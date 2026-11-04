@@ -11,4 +11,10 @@ public class CartTests
     public void AddToCart_AddsProduct()
     {
     }
+
+    [Fact]
+    [EndToEndTestVial<CartVial>(Description = "A customer can fill a cart and see its total")]
+    public void FillCart_ShowsTotal()
+    {
+    }
 }

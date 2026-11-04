@@ -28,7 +28,7 @@ public class CliSmokeTests(FixtureGeneration fixture)
                 TestContext.Current.CancellationToken);
 
             Assert.True(result.ExitCode == PipetteExitCodes.Success, $"exit {result.ExitCode}{Environment.NewLine}{result.Output}{result.Error}");
-            Assert.Contains("Wrote 9 vial(s)", result.Output, StringComparison.Ordinal);
+            Assert.Contains("Wrote 10 vial(s)", result.Output, StringComparison.Ordinal);
             Assert.Contains("warning: 'NonTestLibrary.csproj' is not a test project", result.Error, StringComparison.Ordinal);
             Assert.Equal(fixture.ProjectsOutput, await File.ReadAllTextAsync(output, TestContext.Current.CancellationToken));
         }

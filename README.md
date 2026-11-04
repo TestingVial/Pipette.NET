@@ -169,7 +169,7 @@ For the fixture project in `tests/Fixtures/SampleTests` (excerpt of `pipette tes
   comes from a compiled assembly instead of source), Pipette uses the vial type's name (e.g. `CartVial`) and warns.
 - **Custom attributes from compiled packages are skipped.** The test type of a custom attribute is read from its constructor's
   source; attributes that come from a NuGet package or a DLL reference (rather than a project in the workspace) are skipped with a
-  warning. The built-in `UnitTestVial` and `IntegrationTestVial` are always recognized.
+  warning. The built-in `UnitTestVial`, `IntegrationTestVial` and `EndToEndTestVial` are always recognized.
 - **Only the first target framework is analyzed** for multi-targeted projects.
 
 ## Building and testing this repository
