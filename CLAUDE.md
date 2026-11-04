@@ -20,6 +20,18 @@ dotnet test                                    # run from this folder: global.js
   against the schema copy embedded from `tests/Pipette.Core.Tests/Schemas/v<CurrentSchemaVersion>.json` — keep it identical to
   `VialSchemas/schemas/` (`EmbeddedSchemaTests` compares them when `../VialSchemas` or `VIALSCHEMAS_DIR` exists).
 
+## CI/CD and releases
+
+`.github/workflows/ci-cd.yml` restores the fixtures, builds, tests (with VialSchemas checked out, so `EmbeddedSchemaTests` runs)
+and packs on every pull request and push. On push to `main` it also publishes the tool to nuget.org:
+
+- **Version** `<VersionMajorMinor>.<run number>` (`src/Pipette.Cli/Pipette.Cli.csproj`, currently `0.1`): every merge is a release.
+  Bump `VersionMajorMinor` for a breaking change or a new feature line; never set the patch by hand.
+- **Authentication**: nuget.org Trusted Publishing (`NuGet/login`, OIDC, no API key). One-time setup by a maintainer: a trusted
+  publishing policy on nuget.org for repository `TestingVial/Pipette.NET` and workflow `ci-cd.yml`, and the repository secret
+  `NUGET_USER` set to the nuget.org account (profile name, not e-mail) that owns the policy.
+- A change that needs an unreleased TestingVial.NET version can't merge until that package is on nuget.org: CI restores from it.
+
 ## Layout
 
 `src/Pipette.Cli` (`Program.cs`, argument parsing, exit codes) → `src/Pipette.Core/PipetteRunner.cs`, which runs:

@@ -1,0 +1,80 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  # Every pull request, including those stacked on other branches.
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    env:
+      # EmbeddedSchemaTests compares the embedded schema copy with the published one.
+      VIALSCHEMAS_DIR: ${{ github.workspace }}/VialSchemas
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check out VialSchemas
+        uses: actions/checkout@v4
+        with:
+          repository: TestingVial/VialSchemas
+          path: VialSchemas
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore fixtures
+        run: dotnet restore tests/Fixtures/Fixtures.slnx
+
+      - name: Build
+        run: dotnet build Pipette.NET.slnx -c Release
+
+      - name: Test
+        run: dotnet test Pipette.NET.slnx -c Release --no-build
+
+      # Patch = run number, so every run gets a unique, increasing version (0.1.<run>); only pushes to main publish it.
+      - name: Pack
+        run: dotnet pack src/Pipette.Cli -c Release --no-build -p:VersionPatch=${{ github.run_number }} -o ./artifacts
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: nupkg
+          path: artifacts/*.nupkg
+
+  publish:
+    needs: build-and-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      # nuget.org Trusted Publishing exchanges the workflow's OIDC token for a short-lived API key.
+      id-token: write
+    steps:
+      - name: Download package
+        uses: actions/download-artifact@v4
+        with:
+          name: nupkg
+          path: artifacts
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Log in to nuget.org
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Push to nuget.org
+        run: >-
+          dotnet nuget push "artifacts/*.nupkg"
+          --api-key ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+          --source https://api.nuget.org/v3/index.json

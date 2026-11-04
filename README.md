@@ -1,5 +1,8 @@
 # Pipette.NET
 
+[![NuGet](https://img.shields.io/nuget/v/Pipette.NET.svg)](https://www.nuget.org/packages/Pipette.NET/)
+[![CI/CD](https://github.com/TestingVial/Pipette.NET/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/TestingVial/Pipette.NET/actions/workflows/ci-cd.yml)
+
 Pipette.NET is a .NET global tool (`pipette`) that reads the [TestingVial.NET](https://github.com/TestingVial/TestingVial.NET)
 attributes in your test projects and writes a `.vial` file: a JSON catalogue of which tests cover which features, conforming to the
 [VialSchemas v0.0.2](https://github.com/TestingVial/VialSchemas/blob/main/schemas/v0.0.2.json) schema.
@@ -25,15 +28,21 @@ public class CartTests
 
 ## Install
 
-Pipette.NET is not published to nuget.org yet. Pack it and install it from the local folder:
+Install the `pipette` tool from nuget.org:
 
-```powershell
+```bash
+dotnet tool install --global Pipette.NET
+```
+
+To update it, run `dotnet tool update --global Pipette.NET`. To install it for one repository only, create a tool manifest
+(`dotnet new tool-manifest`) and drop `--global`.
+
+Every push to `main` publishes a new version (`0.1.<build>`). To try a local build instead, pack it and install it from the folder:
+
+```bash
 dotnet pack src/Pipette.Cli -c Release
 dotnet tool install --global --add-source ./artifacts/nupkg Pipette.NET
 ```
-
-The package is written to `artifacts/nupkg`. To update an existing installation, use `dotnet tool update` with the same arguments.
-To install it for one repository only, create a tool manifest (`dotnet new tool-manifest`) and drop `--global`.
 
 ## Usage
 
