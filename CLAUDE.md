@@ -48,7 +48,7 @@ Diagnostics go through `Diagnostics/PipetteDiagnostics.cs` (warnings/notes to st
 
 - **MSBuildLocator**: MSBuild assemblies must come from the installed SDK. Every project excludes `Microsoft.Build.*` runtime
   assets (`ExcludeAssets="runtime"`, see `Directory.Build.props`); don't add a package that brings them in without the same treatment.
-- TestingVial.NET is consumed as a **NuGet package** (`1.0.1`) in the tests and fixtures. `docs/testingvial-api.md` documents the
+- TestingVial.NET is consumed as a **NuGet package** (`1.1.0`) in the tests and fixtures. `docs/testingvial-api.md` documents the
   API Pipette relies on — update it when the library changes.
 - Output must stay deterministic (sorted entries) so `.vial` files diff cleanly.
 - The README is the user documentation (options, exit codes, attribute mapping); update it with any behaviour change.
