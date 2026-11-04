@@ -19,7 +19,9 @@ public class EndToEndTests(FixtureGeneration fixture)
         Expected("Checkout", "Checkout completes in under a second", "performance", "SampleTests.Checkout.CheckoutTests", "Checkout_IsFast"),
         Expected("Search", "Search answers within 100 ms", "performance", "SampleTests.Checkout.CheckoutTests", "Checkout_IsFast"),
         Expected("Checkout", "A customer can pay for a cart", "e2e", "SampleTests.Checkout.CheckoutTests", "Pay_CompletesOrder"),
+        Expected("Catalog", "SearchTests", "integration", "SampleTests.SearchTests", "*"),
         Expected("Search", "Search matches products by name", "unit", "SampleTests.SearchTests", "Search_MatchesByName"),
+        Expected("Search", "Search_WithoutDescription", "unit", "SampleTests.SearchTests", "Search_WithoutDescription"),
     ];
 
     private static readonly string[] SchemaTypes = ["unit", "integration", "e2e"];
@@ -57,17 +59,30 @@ public class EndToEndTests(FixtureGeneration fixture)
     }
 
     [Fact]
-    public void Warnings_AreTheNonTestProjectAndTheMissingDescription()
+    public void Warnings_AreOnlyTheNonTestProject()
     {
         foreach (var diagnostics in new[] { fixture.ProjectsDiagnostics, fixture.SolutionDiagnostics })
         {
-            var warnings = Warnings(diagnostics);
-            Assert.Equal(2, warnings.Count);
-            Assert.Contains(warnings, w => w.Contains("'NonTestLibrary.csproj' is not a test project", StringComparison.Ordinal));
-            Assert.Contains(warnings, w =>
-                w.Contains($"{SearchTests}(15)", StringComparison.Ordinal)
-                && w.Contains("SampleTests.SearchTests.Search_WithoutDescription", StringComparison.Ordinal)
-                && w.Contains("'Search' has no Description; entry skipped", StringComparison.Ordinal));
+            var warning = Assert.Single(Warnings(diagnostics));
+            Assert.Contains("'NonTestLibrary.csproj' is not a test project", warning, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void MissingDescriptions_AreVerboseNotes()
+    {
+        foreach (var diagnostics in new[] { fixture.ProjectsDiagnostics, fixture.SolutionDiagnostics })
+        {
+            var notes = diagnostics.Messages
+                .Where(m => m.Severity == PipetteSeverity.Verbose && m.Text.Contains("has no Description", StringComparison.Ordinal))
+                .Select(m => m.Text)
+                .Order(StringComparer.Ordinal)
+                .ToList();
+            Assert.Equal(2, notes.Count);
+            Assert.StartsWith($"{SearchTests}(16): ", notes[0], StringComparison.Ordinal);
+            Assert.EndsWith("on SampleTests.SearchTests.Search_WithoutDescription: 'Search' has no Description; using 'Search_WithoutDescription'.", notes[0], StringComparison.Ordinal);
+            Assert.StartsWith($"{SearchTests}(6): ", notes[1], StringComparison.Ordinal);
+            Assert.EndsWith("on SampleTests.SearchTests.*: 'Catalog' has no Description; using 'SearchTests'.", notes[1], StringComparison.Ordinal);
         }
     }
 
