@@ -11,8 +11,3 @@ public class PerformanceTestVial : VialAttribute
 {
     public PerformanceTestVial(string name) : base(name, "Performance") { }
 }
-
-public class EndToEndTestVial : VialAttribute
-{
-    public EndToEndTestVial(string name) : base(name, "E2E") { }
-}

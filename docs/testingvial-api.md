@@ -1,7 +1,7 @@
-# TestingVial.NET 1.0.1 public API
+# TestingVial.NET 1.1.0 public API
 
-Decompiled from `lib/net10.0/TestingVial.NET.dll` (nupkg also ships net8.0 and net9.0; no dependencies).
-Note: `AssemblyVersion` is `0.0.1.0` even though the package version is 1.0.1 — match by type name, never by assembly version.
+From the TestingVial.NET 1.1.0 sources (the nupkg ships net8.0, net9.0 and net10.0, no dependencies, plus the `TV0001` analyzer).
+`AssemblyVersion` is `<major>.0.0.0` (1.0.0.0 for every 1.x; 1.0.1 had 0.0.1.0) — match by type name, never by assembly version.
 
 Everything lives in a single namespace: **`TestingVial.NET`**.
 
@@ -49,6 +49,16 @@ public class IntegrationTestVial : VialAttribute
 {
     public IntegrationTestVial(string name) : base(name, "Integration");
 }
+
+public class EndToEndTestVial<T> : TestingVialAttribute<T> where T : IVial, new()
+{
+    public EndToEndTestVial() : base("E2E");
+}
+
+public class EndToEndTestVial : VialAttribute
+{
+    public EndToEndTestVial(string name) : base(name, "E2E");
+}
 ```
 
 Metadata names (for `Compilation.GetTypeByMetadataName`):
@@ -60,10 +70,11 @@ Metadata names (for `Compilation.GetTypeByMetadataName`):
 | `TestingVialAttribute<T>` | ``TestingVial.NET.TestingVialAttribute`1`` |
 | `UnitTestVial` / `UnitTestVial<T>` | `TestingVial.NET.UnitTestVial` / ``TestingVial.NET.UnitTestVial`1`` |
 | `IntegrationTestVial` / `IntegrationTestVial<T>` | `TestingVial.NET.IntegrationTestVial` / ``TestingVial.NET.IntegrationTestVial`1`` |
+| `EndToEndTestVial` / `EndToEndTestVial<T>` | `TestingVial.NET.EndToEndTestVial` / ``TestingVial.NET.EndToEndTestVial`1`` |
 
 ## Test-type strings
 
-Exact strings passed to the base constructor: **`"Unit"`** and **`"Integration"`**. There is no built-in E2E attribute.
+Exact strings passed to the base constructor: **`"Unit"`**, **`"Integration"`** and **`"E2E"`** (added in 1.1.0).
 Custom attributes pick any string (README example: `"Performance"`).
 
 ## Facts that matter for Pipette's analysis
@@ -81,7 +92,7 @@ Custom attributes pick any string (README example: `"Performance"`).
   `return`, or a `const`.
 - **Name, string form:** for the built-ins it's `ConstructorArguments[0]` (`string name`).
 - **Test type:** this is not in attribute data. It's a constant in the subclass ctor's `: base(...)` initializer:
-  - Built-ins: map by original definition `UnitTestVial`/`UnitTestVial<T>` → `"Unit"`, `IntegrationTestVial`/`IntegrationTestVial<T>` → `"Integration"`.
+  - Built-ins: map by original definition `UnitTestVial`/`UnitTestVial<T>` → `"Unit"`, `IntegrationTestVial`/`IntegrationTestVial<T>` → `"Integration"`, `EndToEndTestVial`/`EndToEndTestVial<T>` → `"E2E"`.
   - Custom generic (`: TestingVialAttribute<T>`): `base(testType)`, which is the **1st** (only) argument.
   - Custom non-generic (`: VialAttribute`): `base(name, testType)`, which is the **2nd** argument, and the 1st is usually the ctor's `name` parameter.
   - A custom attribute may derive from another custom attribute. Follow the chain until you reach a constant.

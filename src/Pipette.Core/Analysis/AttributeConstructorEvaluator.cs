@@ -66,6 +66,16 @@ internal sealed class AttributeConstructorEvaluator(SemanticModelProvider models
             return new(null, true, TestingVialSymbols.IntegrationTestType, null);
         }
 
+        if (TestingVialSymbols.Is(type, TestingVialSymbols.EndToEndTestVial))
+        {
+            return new(Arg(0), false, TestingVialSymbols.EndToEndTestType, null);
+        }
+
+        if (TestingVialSymbols.Is(type, TestingVialSymbols.EndToEndTestVialGeneric))
+        {
+            return new(null, true, TestingVialSymbols.EndToEndTestType, null);
+        }
+
         return Fail($"the constructor of '{type.ToDisplayString()}' is not available in source");
     }
 

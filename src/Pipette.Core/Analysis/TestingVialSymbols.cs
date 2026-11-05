@@ -16,9 +16,12 @@ internal static class TestingVialSymbols
     public const string UnitTestVialGeneric = "UnitTestVial`1";
     public const string IntegrationTestVial = "IntegrationTestVial";
     public const string IntegrationTestVialGeneric = "IntegrationTestVial`1";
+    public const string EndToEndTestVial = "EndToEndTestVial";
+    public const string EndToEndTestVialGeneric = "EndToEndTestVial`1";
 
     public const string UnitTestType = "Unit";
     public const string IntegrationTestType = "Integration";
+    public const string EndToEndTestType = "E2E";
 
     public static bool Is(ITypeSymbol? type, string metadataName) =>
         type is not null

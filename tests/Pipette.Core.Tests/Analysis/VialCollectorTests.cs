@@ -39,6 +39,21 @@ public class VialCollectorTests
     }
 
     [Fact]
+    public async Task EndToEndTestVial_GenericAndStringForms_AreE2E()
+    {
+        var (vials, diagnostics) = await CollectAsync(Usings + CartVial + """
+            public class T
+            {
+                [EndToEndTestVial<CartVial>(Description = "d")] public void A() { }
+                [EndToEndTestVial("Checkout", Description = "d")] public void B() { }
+            }
+            """);
+
+        Assert.Empty(diagnostics.Messages);
+        Assert.Equal(["A|Cart|e2e", "B|Checkout|e2e"], vials.Select(v => $"{v.Location.MethodName}|{v.Name}|{v.Type}"));
+    }
+
+    [Fact]
     public async Task ClassLevelVial_IsEmittedOnceWithStarMethod()
     {
         var (vials, _) = await CollectAsync(Usings + CartVial + """

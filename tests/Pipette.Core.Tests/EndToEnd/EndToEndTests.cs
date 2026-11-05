@@ -15,6 +15,7 @@ public class EndToEndTests(FixtureGeneration fixture)
     [
         Expected("Cart", "Carts can have products added", "unit", "SampleTests.CartTests", "AddToCart_AddsProduct"),
         Expected("Product", "Products can be added to a cart", "unit", "SampleTests.CartTests", "AddToCart_AddsProduct"),
+        Expected("Cart", "A customer can fill a cart and see its total", "e2e", "SampleTests.CartTests", "FillCart_ShowsTotal"),
         Expected("Checkout", "Checkout talks to the payment gateway", "integration", "SampleTests.Checkout.CheckoutTests", "*"),
         Expected("Checkout", "Checkout completes in under a second", "performance", "SampleTests.Checkout.CheckoutTests", "Checkout_IsFast"),
         Expected("Search", "Search answers within 100 ms", "performance", "SampleTests.Checkout.CheckoutTests", "Checkout_IsFast"),
