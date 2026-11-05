@@ -36,7 +36,7 @@ jobs:
         run: dotnet build Pipette.NET.slnx -c Release -p:VersionPatch=${{ github.run_number }}
 
       - name: Test
-        run: dotnet test Pipette.NET.slnx -c Release --no-build
+        run: dotnet test --solution Pipette.NET.slnx -c Release --no-build
 
       # Patch = run number, so every run gets a unique, increasing version (0.1.<run>); only pushes to main publish it.
       - name: Pack
