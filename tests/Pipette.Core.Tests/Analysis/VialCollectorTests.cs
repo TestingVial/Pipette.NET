@@ -54,6 +54,46 @@ public class VialCollectorTests
     }
 
     [Fact]
+    public async Task GenericVials_BuiltInAndCustom_HaveNoType()
+    {
+        var (vials, diagnostics) = await CollectAsync(Usings + CartVial + """
+            public class AreaVial<T> : TestingVialAttribute<T> where T : IVial, new() { }
+
+            public class ExplicitAreaVial<T> : TestingVialAttribute<T> where T : IVial, new()
+            { public ExplicitAreaVial() : base() { } }
+
+            public class FeatureVial : VialAttribute
+            { public FeatureVial(string name) : base(name) { } }
+
+            public class ShopVial : TestingVialAttribute
+            { public ShopVial() : base("Shop") { } }
+
+            [TestingVial<CartVial>(Description = "d")]
+            public class T
+            {
+                [TestingVial("Checkout", Description = "d")] public void StringForm() { }
+                [AreaVial<CartVial>(Description = "d")] public void ImplicitBase() { }
+                [ExplicitAreaVial<CartVial>(Description = "d")] public void ExplicitBase() { }
+                [FeatureVial("Search", Description = "d")] public void NameOnlyBase() { }
+                [ShopVial(Description = "d")] public void DerivedFromBuiltIn() { }
+            }
+            """);
+
+        Assert.Empty(diagnostics.Messages);
+        Assert.Equal(
+            [
+                "*|Cart|",
+                "StringForm|Checkout|",
+                "ImplicitBase|Cart|",
+                "ExplicitBase|Cart|",
+                "NameOnlyBase|Search|",
+                "DerivedFromBuiltIn|Shop|",
+            ],
+            vials.Select(v => $"{v.Location.MethodName}|{v.Name}|{v.Type}"));
+        Assert.All(vials, v => Assert.Null(v.Type));
+    }
+
+    [Fact]
     public async Task ClassLevelVial_IsEmittedOnceWithStarMethod()
     {
         var (vials, _) = await CollectAsync(Usings + CartVial + """

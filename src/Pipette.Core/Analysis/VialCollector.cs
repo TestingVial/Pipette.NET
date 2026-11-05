@@ -87,7 +87,7 @@ public sealed class VialCollector(PipetteDiagnostics diagnostics)
             return null;
         }
 
-        if (string.IsNullOrWhiteSpace(values.TestType))
+        if (values.Typed && string.IsNullOrWhiteSpace(values.TestType))
         {
             diagnostics.Warn($"{where}: the test type is not a constant string that can be read from source; entry skipped.");
             return null;
@@ -111,7 +111,8 @@ public sealed class VialCollector(PipetteDiagnostics diagnostics)
             description = fallbackDescription;
         }
 
-        return new Vial(name, description, TestTypeMapper.Map(values.TestType), Vial.CSharpTechnology, location);
+        var type = values.TestType is null ? null : TestTypeMapper.Map(values.TestType);
+        return new Vial(name, description, type, Vial.CSharpTechnology, location);
     }
 
     private string? ResolveGenericName(CollectionContext context, INamedTypeSymbol attributeClass, string where)
