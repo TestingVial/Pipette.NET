@@ -33,7 +33,7 @@ jobs:
         run: dotnet restore tests/Fixtures/Fixtures.slnx
 
       - name: Build
-        run: dotnet build Pipette.NET.slnx -c Release
+        run: dotnet build Pipette.NET.slnx -c Release -p:VersionPatch=${{ github.run_number }}
 
       - name: Test
         run: dotnet test Pipette.NET.slnx -c Release --no-build
