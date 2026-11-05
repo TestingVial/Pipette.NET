@@ -10,11 +10,26 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>pipette</ToolCommandName>
     <PackageId>Pipette.NET</PackageId>
-    <Version>0.1.0</Version>
+    <!-- Edit the major.minor only: CI sets the patch to the workflow run number (-p:VersionPatch=...). -->
+    <VersionMajorMinor>0.1</VersionMajorMinor>
+    <VersionPatch Condition="'$(VersionPatch)' == ''">0</VersionPatch>
+    <Version>$(VersionMajorMinor).$(VersionPatch)</Version>
     <Description>Generates .vial files from TestingVial.NET attributes using Roslyn source analysis.</Description>
     <PackageTags>testing testing-vial vial roslyn</PackageTags>
+    <Authors>DavideBellone</Authors>
+    <Company>TestingVial</Company>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/TestingVial/Pipette.NET</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/TestingVial/Pipette.NET</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
     <PackageOutputPath>$(MSBuildThisFileDirectory)..\..\artifacts\nupkg</PackageOutputPath>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" Visible="false" />
+    <None Include="..\..\icon.png" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="System.CommandLine" Version="2.0.14" />
